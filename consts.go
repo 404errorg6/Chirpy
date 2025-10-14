@@ -23,11 +23,3 @@ func (cfg *apiCfg) middlewareMetricsInc(next http.Handler) http.Handler {
 		},
 	)
 }
-
-func (cfg *apiCfg) getHits() int32 {
-	return cfg.fileServerHits.Load()
-}
-
-func (cfg *apiCfg) hitsReset() {
-	cfg.fileServerHits.Store(0)
-}
