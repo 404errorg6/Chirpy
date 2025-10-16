@@ -5,54 +5,72 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+
+	"chirpy/internal/database"
+
+	"github.com/google/uuid"
 )
 
-func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
-	erroHandler := func(msg string) {
-		w.WriteHeader(400)
-		data, _ := json.Marshal(struct {
-			Error string `json:"error"`
-		}{
-			Error: msg,
-		})
-		w.Write(data)
-	}
+func handlerChirps(w http.ResponseWriter, req *http.Request) {
 	var input struct {
-		Body string `json:"body"`
-	}
-	var output struct {
-		CleanedBody string `json:"cleaned_body"`
-		Valid       bool   `json:"valid"`
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 
 	body, err := io.ReadAll(req.Body)
 	req.Body.Close()
 	if err != nil {
-		erroHandler("error reading request")
+		respondErrJSON(w, 500, err)
 		return
 	}
-
 	err = json.Unmarshal(body, &input)
 	if err != nil {
-		erroHandler("error unmarhsalling data")
+		respondErrJSON(w, 400, err)
+		return
+	}
+	if len(input.Body) > 140 {
+		respondErrJSON(w, 400, fmt.Errorf("chirp is too long"))
 		return
 	}
 
-	if len(body) > 140 {
-		erroHandler("Chirp is too long")
-		return
+	params := database.CreateChirpParams{
+		Body:   input.Body,
+		UserID: input.UserID,
 	}
 
-	w.WriteHeader(http.StatusOK)
-	output.Valid = true
-	output.CleanedBody = cleanBody(input.Body)
-	data, err := json.Marshal(output)
+	chirp, err := cfg.db.CreateChirp(req.Context(), params)
 	if err != nil {
-		erroHandler("error marshalling data")
+		respondErrJSON(w, 500, err)
 		return
 	}
-	w.Write(data)
-	w.Write([]byte("\n"))
+
+	respondJSON(w, 201, chirp)
+}
+
+func handlerUsers(w http.ResponseWriter, req *http.Request) {
+	var input struct {
+		Email string `json:"email"`
+	}
+
+	body, err := io.ReadAll(req.Body)
+	req.Body.Close()
+	if err != nil {
+		respondErrJSON(w, 500, err)
+		return
+	}
+	if err := json.Unmarshal(body, &input); err != nil {
+		respondErrJSON(w, 400, err)
+		return
+	}
+
+	user, err := cfg.db.CreateUser(req.Context(), input.Email)
+	if err != nil {
+		respondErrJSON(w, 500, err)
+		return
+	}
+	user.Email = input.Email
+	respondJSON(w, 200, user)
 }
 
 func handlerReadiness(w http.ResponseWriter, req *http.Request) {
@@ -69,7 +87,13 @@ func (cfg *apiCfg) handlerMetrics(w http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiCfg) handlerReset(w http.ResponseWriter, req *http.Request) {
+	pf := os.Getenv("PLATFORM")
+	if pf != "dev" {
+		respondErrJSON(w, 403, fmt.Errorf("Forbidden"))
+	}
+
 	cfg.fileServerHits.Store(0)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Hits reset to 0\n"))
+	cfg.db.ResetDatabase(req.Context())
 }
