@@ -18,6 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 	dbURL := os.Getenv("DB_URL")
+	cfg.secret = os.Getenv("SECRET")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("error loading database: %v", err)

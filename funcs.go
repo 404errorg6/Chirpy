@@ -3,9 +3,22 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
+
+func unmarshaller(w http.ResponseWriter, body io.ReadCloser, structure any) error {
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(data, structure); err != nil {
+		return err
+	}
+	return nil
+}
 
 func respondErrJSON(w http.ResponseWriter, code int, err error) {
 	var errored struct {

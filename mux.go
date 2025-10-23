@@ -11,6 +11,9 @@ func Mux() *http.ServeMux {
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 	mux.HandleFunc("POST /api/users", handlerUsers)
 	mux.HandleFunc("POST /api/chirps", handlerChirps)
+	mux.HandleFunc("GET /api/chirps", handlerGetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", handlerGetChirp)
+	mux.HandleFunc("POST /api/login", handlerLogin)
 
 	return mux
 }
