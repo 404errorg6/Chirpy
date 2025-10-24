@@ -29,6 +29,7 @@ type Users struct {
 	Email          string    `json:"email"`
 	HashedPassword string    `json:"hashed_password,omitempty"`
 	Token          string    `json:"token,omitempty"`
+	RefreshToken   string    `json:"refresh_token,omitempty"`
 }
 
 type Chirp struct {

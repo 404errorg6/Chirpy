@@ -14,6 +14,8 @@ func Mux() *http.ServeMux {
 	mux.HandleFunc("GET /api/chirps", handlerGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", handlerGetChirp)
 	mux.HandleFunc("POST /api/login", handlerLogin)
+	mux.HandleFunc("POST /api/refresh", handlerRefresh)
+	mux.HandleFunc("POST /api/revoke", handlerRevoke)
 
 	return mux
 }

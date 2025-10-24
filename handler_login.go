@@ -1,27 +1,71 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
 
 	"chirpy/internal/auth"
+	"chirpy/internal/database"
 )
 
-func handlerLogin(w http.ResponseWriter, req *http.Request) {
-	var user struct {
-		Users
-	}
-	var input struct {
-		Email    string        `json:"email"`
-		Password string        `json:"password"`
-		Expiry   time.Duration `json:"expiry_in_seconds,omitempty"`
+func handlerRevoke(w http.ResponseWriter, req *http.Request) {
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		http.Error(w, "Token not found in header\n", 401)
+		return
 	}
 
-	err := unmarshaller(w, req.Body, &input)
+	params := database.UpdateRefreshTokenParams{
+		Token:     token,
+		UpdatedAt: time.Now(),
+		RevokedAt: sql.NullTime{
+			Time:  time.Now(),
+			Valid: true,
+		},
+	}
+	err = cfg.db.UpdateRefreshToken(req.Context(), params)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Could not revoke token: %v", err), 500)
+		return
+	}
+
+	w.WriteHeader(204)
+}
+
+func handlerRefresh(w http.ResponseWriter, req *http.Request) {
+	var output struct {
+		Token string `json:"token"`
+	}
+
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		http.Error(w, "Token not found in header\n", 401)
+		return
+	}
+	_, err = cfg.db.GetRefreshToken(req.Context(), token)
+	if err != nil {
+		http.Error(w, "Invalid token", 401)
+		return
+	}
+
+	output.Token = token
+	respondJSON(w, 200, output)
+}
+
+func handlerLogin(w http.ResponseWriter, req *http.Request) {
+	var user Users
+
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	err := unmarshaller(req.Body, &input)
 	req.Body.Close()
 	if err != nil {
-		http.Error(w, "Could not read the body", 400)
+		http.Error(w, "Could not read the body\n", 400)
 		return
 	}
 
@@ -40,13 +84,27 @@ func handlerLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if input.Expiry == 0 || input.Expiry > time.Hour {
-		input.Expiry = time.Hour
-	}
-
-	token, err := auth.MakeJWT(tmpUser.ID, cfg.secret, input.Expiry)
+	accessToken, err := auth.MakeJWT(tmpUser.ID, cfg.secret, 1*time.Hour)
 	if err != nil {
 		http.Error(w, "Cound not make JWT\n", 500)
+		return
+	}
+
+	rToken, _ := auth.MakeRefreshToken()
+	// Storing refreshToken in db
+	params := database.CreateRefreshTokenParams{
+		Token:     rToken,
+		UpdatedAt: time.Now(),
+		UserID:    tmpUser.ID,
+		ExpiresAt: time.Now().Add(60 * 24 * time.Hour),
+		RevokedAt: sql.NullTime{
+			Valid: false,
+		},
+	}
+
+	refreshToken, err := cfg.db.CreateRefreshToken(req.Context(), params)
+	if err != nil {
+		http.Error(w, "Could not create refresh token", 500)
 		return
 	}
 
@@ -54,8 +112,8 @@ func handlerLogin(w http.ResponseWriter, req *http.Request) {
 	user.CreatedAt = tmpUser.CreatedAt
 	user.ID = tmpUser.ID
 	user.UpdatedAt = tmpUser.UpdatedAt
-	user.Token = token
-	fmt.Printf("Token: %v\n", token)
+	user.Token = accessToken
+	user.RefreshToken = refreshToken.Token
 
 	respondJSON(w, 200, user)
 }

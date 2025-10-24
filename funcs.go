@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func unmarshaller(w http.ResponseWriter, body io.ReadCloser, structure any) error {
+func unmarshaller(body io.ReadCloser, structure any) error {
 	data, err := io.ReadAll(body)
 	if err != nil {
 		return err
