@@ -6,12 +6,64 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"chirpy/internal/auth"
 	"chirpy/internal/database"
 
 	"github.com/google/uuid"
 )
+
+func handlerUpdateUsers(w http.ResponseWriter, req *http.Request) {
+	var user Users
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		http.Error(w, "Could not get token from header", 400)
+		return
+	}
+
+	id, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		http.Error(w, "Unauthorized\n", 401)
+		return
+	}
+
+	err = unmarshaller(req.Body, &input)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error unmarhsalling data: %v", err), 401)
+		return
+	}
+
+	hash, err := auth.HashPassword(input.Password)
+	if err != nil {
+		http.Error(w, "Could not hash the password", http.StatusInternalServerError)
+	}
+
+	params := database.UpdateUserParams{
+		ID:             id,
+		Email:          input.Email,
+		HashedPassword: hash,
+	}
+
+	err = cfg.db.UpdateUser(req.Context(), params)
+	if err != nil {
+		http.Error(w, "Could not update user data", http.StatusInternalServerError)
+		return
+	}
+
+	user.Email = input.Email
+	user.ID = id
+	user.UpdatedAt = time.Now()
+	user.HashedPassword = ""
+
+	respondJSON(w, 200, user)
+	user.HashedPassword = hash
+}
 
 func handlerGetChirp(w http.ResponseWriter, req *http.Request) {
 	idstr := req.PathValue("chirpID")
