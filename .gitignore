@@ -1,2 +1,2 @@
 *.env
-sql/scehma/*sh
+sql/scehma/*.sh
