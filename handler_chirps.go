@@ -67,12 +67,50 @@ func handlerGetChirp(w http.ResponseWriter, req *http.Request) {
 }
 
 func handlerGetChirps(w http.ResponseWriter, req *http.Request) {
-	chirps, err := cfg.db.GetChirps(req.Context())
+	var chirps []database.Chirp
+	var authID uuid.UUID
+	var err error
+
+	authIDStr := req.URL.Query().Get("author_id")
+	sort := req.URL.Query().Get("sort")
+
+	if authIDStr != "" {
+		goto withAuthorID
+	} else if sort == "desc" {
+		goto sortDesc
+	}
+	goto def
+
+withAuthorID:
+	authID, err = uuid.Parse(authIDStr)
+	if err != nil {
+		http.Error(w, "Invalid authorID", 400)
+		return
+	}
+
+	chirps, err = cfg.db.GetChirpsByAuthorID(req.Context(), authID)
+	if err != nil {
+		http.Error(w, "Could not get chirps for that author", 400)
+		return
+	}
+	goto sendResponse
+
+sortDesc:
+	chirps, err = cfg.db.GetChirpsDesc(req.Context())
+	if err != nil {
+		http.Error(w, "Error occured while getting chirps", http.StatusInternalServerError)
+		return
+	}
+	goto sendResponse
+
+def:
+	chirps, err = cfg.db.GetChirpsAsc(req.Context())
 	if err != nil {
 		http.Error(w, "Could not get data", http.StatusNoContent)
 		return
 	}
 
+sendResponse:
 	respondJSON(w, 200, chirps)
 }
 
