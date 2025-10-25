@@ -17,6 +17,8 @@ func Mux() *http.ServeMux {
 	mux.HandleFunc("POST /api/refresh", handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", handlerRevoke)
 	mux.HandleFunc("PUT /api/users", handlerUpdateUsers)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", handlerDelChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", handlerUpgradeSubs)
 
 	return mux
 }

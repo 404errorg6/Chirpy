@@ -20,6 +20,7 @@ type apiCfg struct {
 	fileServerHits atomic.Int32
 	db             *database.Queries
 	secret         string
+	polkaKey       string
 }
 
 type Users struct {
@@ -27,6 +28,7 @@ type Users struct {
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	Email          string    `json:"email"`
+	IsChirpyRed    bool      `json:"is_chirpy_red"`
 	HashedPassword string    `json:"hashed_password,omitempty"`
 	Token          string    `json:"token,omitempty"`
 	RefreshToken   string    `json:"refresh_token,omitempty"`
