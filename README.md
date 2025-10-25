@@ -1,5 +1,6 @@
 # Chirpy
 
+A project from boot.dev's go backend course.  
 Chirpy is a lightweight social media platform backend written in Go. It provides APIs for user management, authentication, and posting short messages called "chirps." The project uses Postgres for backend.
 
 ## Features
