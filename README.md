@@ -62,7 +62,7 @@ Chirpy is a lightweight social media platform backend written in Go. It provides
 4. Configure environment variables:
    - Create a `.env` file with the required variables:
      ```
-     DB_URL=your_database_url
+     DB_URL=your_database_url  #format:postgresql://USERNAME:PASSWORD@HOST:PORT/DATABASE_NAME
      SECRET=your_secret_key
      POLKA_KEY=your_polka_key
      ```
